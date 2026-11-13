@@ -10,8 +10,12 @@
 ; BuildDir 应是已执行 windeployqt（或 qt_deploy_runtime）的目录（含 QueMusic.exe 与 Qt 运行库）。
 
 #define MyAppName "QueMusic"
+; AppVersion 必须是纯数字版本号，标记这个包是本地/CI 构建用 MyAppBuild 区分
 #ifndef MyAppVersion
-  #define MyAppVersion "0.8.0-dev"
+  #define MyAppVersion "0.8.0"
+#endif
+#ifndef MyAppBuild
+  #define MyAppBuild "dev"
 #endif
 #define MyAppPublisher "BroNekoX"
 #define MyAppURL "https://quemusic.top"
@@ -40,7 +44,7 @@ LicenseFile=..\..\LICENSE
 InfoBeforeFile=..\..\NOTICE
 PrivilegesRequiredOverridesAllowed=dialog
 OutputDir=..\..\dist
-OutputBaseFilename=QueMusic-{#MyAppVersion}-win64-setup
+OutputBaseFilename=QueMusic-{#MyAppVersion}-{#MyAppBuild}-win64-setup
 SetupIconFile=..\..\resources\icon.ico
 SolidCompression=yes
 WizardStyle=modern
