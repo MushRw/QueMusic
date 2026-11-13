@@ -2,6 +2,11 @@ name: Build Windows (MinGW)
 
 on:
   workflow_dispatch:
+    inputs:
+      package:
+        description: "同时用 Inno Setup 打安装包（需要联网装 choco 包）"
+        type: boolean
+        default: true
 
 jobs:
   build-windows:
@@ -34,8 +39,44 @@ jobs:
         shell: pwsh
         run: cmake --build build --parallel
 
-      - name: Upload build artifact
+      # 项目在 CMake 里调了 qt_deploy_runtime()，Release 构建会把 Qt 运行库 / 插件直接部署到 build/bin，
+      # 所以 build/bin 本身就是一个可运行的便携目录。这里只做校验，避免产出不可用的裸 exe。
+      - name: Check deployment
+        shell: pwsh
+        run: |
+          $bin = "build/bin"
+          Get-ChildItem $bin | Select-Object Name, Length | Format-Table -AutoSize
+          if (-not (Test-Path "$bin/QueMusic.exe")) { throw "QueMusic.exe not found in $bin" }
+          if (-not (Test-Path "$bin/Qt6Core.dll")) { throw "qt_deploy_runtime 没有把 Qt 运行库部署到 $bin" }
+          $plugins = Get-ChildItem "$bin/qml" -ErrorAction SilentlyContinue
+          if (-not $plugins) { throw "没有部署 qml 插件目录" }
+
+      - name: Package portable zip
+        shell: pwsh
+        run: |
+          $sha = "${{ github.sha }}".Substring(0, 7)
+          $name = "QueMusic-mingw-$sha"
+          Copy-Item -Recurse "build/bin" $name
+          Compress-Archive -Path "$name\*" -DestinationPath "$name.zip" -CompressionLevel Optimal
+          Get-Item "$name.zip" | Select-Object Name, Length
+
+      - name: Build installer (Inno Setup)
+        if: ${{ inputs.package }}
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          choco install innosetup -y --no-progress
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { throw "ISCC.exe not found" }
+          & $iscc "/DBuildDir=$env:GITHUB_WORKSPACE\build\bin" "packaging\windows\QueMusic.iss"
+          Get-ChildItem dist -ErrorAction SilentlyContinue | Select-Object Name, Length
+
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: QueMusic-windows-build
-          path: build/bin/QueMusic.exe
+          name: QueMusic-windows-${{ github.sha }}
+          path: |
+            QueMusic-mingw-*.zip
+            dist/*.exe
+          if-no-files-found: warn
+          retention-days: 14
