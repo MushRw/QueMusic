@@ -5,11 +5,14 @@
 ;
 ; 用法：
 ;   iscc /DBuildDir="C:\path\to\deployed\bin" packaging\windows\QueMusic.iss
+;   iscc /DBuildDir="..." /DMyAppVersion="0.8.0-dev" packaging\windows\QueMusic.iss
 ;
-; BuildDir 应是已执行 windeployqt 的目录（包含 QueMusic.exe 与 Qt 运行库）。
+; BuildDir 应是已执行 windeployqt（或 qt_deploy_runtime）的目录（含 QueMusic.exe 与 Qt 运行库）。
 
 #define MyAppName "QueMusic"
-#define MyAppVersion "0.6.0"
+#ifndef MyAppVersion
+  #define MyAppVersion "0.8.0-dev"
+#endif
 #define MyAppPublisher "BroNekoX"
 #define MyAppURL "https://quemusic.top"
 #define MyAppExeName "QueMusic.exe"
