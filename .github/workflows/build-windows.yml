@@ -28,11 +28,15 @@ jobs:
           echo "D:/Qt/Tools/mingw1310_64/bin" | Out-File -Append $env:GITHUB_PATH
           echo "D:/Qt/Tools/Ninja" | Out-File -Append $env:GITHUB_PATH
 
+      # MinGW GCC 13.1 + LTO：qt_add_qml_module 生成的 qmltyperegistrations 对象会以 LTO
+      # 格式产出，ld 无法加载（"plugin needed to handle lto object"），最终
+      # qml_register_types_QueMusic() 变成未定义引用、链接失败。CI 里关掉 LTO。
       - name: Configure (CMake)
         shell: pwsh
         run: |
           cmake -B build -G Ninja `
             -DCMAKE_BUILD_TYPE=Release `
+            -DQUEMUSIC_ENABLE_LTO=OFF `
             -DCMAKE_PREFIX_PATH="D:/Qt/6.10.3/mingw_64"
 
       - name: Build
