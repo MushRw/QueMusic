@@ -67,13 +67,25 @@ jobs:
       - name: Build installer (Inno Setup)
         if: ${{ inputs.package }}
         shell: pwsh
-        continue-on-error: true
         run: |
+          $ErrorActionPreference = "Stop"
           choco install innosetup -y --no-progress
           $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
           if (-not (Test-Path $iscc)) { throw "ISCC.exe not found" }
+
+          # Inno Setup 官方安装包不带中文语言包，QueMusic.iss 引用的 compiler:Languages\Chinese.isl
+          # 并不存在，需先补齐（取自官方 issrc 仓库的简体中文翻译）。
+          $langDir = "C:\Program Files (x86)\Inno Setup 6\Languages"
+          Invoke-WebRequest -UseBasicParsing `
+            -Uri "https://raw.githubusercontent.com/jrsoftware/issrc/main/Files/Languages/ChineseSimplified.isl" `
+            -OutFile "$langDir\Chinese.isl"
+
           & $iscc "/DBuildDir=$env:GITHUB_WORKSPACE\build\bin" "packaging\windows\QueMusic.iss"
-          Get-ChildItem dist -ErrorAction SilentlyContinue | Select-Object Name, Length
+          if ($LASTEXITCODE -ne 0) { throw "ISCC 编译安装包失败，exit=$LASTEXITCODE" }
+
+          $exe = Get-ChildItem dist -Filter *.exe -ErrorAction SilentlyContinue
+          if (-not $exe) { throw "dist 下没有生成安装包" }
+          $exe | Select-Object Name, Length
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
